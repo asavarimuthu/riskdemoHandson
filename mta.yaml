@@ -1,7 +1,7 @@
 _schema-version: '3.1'
 ID: riskdemo
 version: 1.0.0
-description: "A simple CAP project."
+description: A simple CAP project.
 parameters:
   enable-parallel-deployments: true
 build-parameters:
@@ -18,12 +18,13 @@ modules:
     build-parameters:
       builder: npm-ci
     provides:
-      - name: srv-api # required by consumers of CAP services (e.g. approuter)
+      - name: srv-api
         properties:
-          srv-url: ${default-url}
+          srv-url: '${default-url}'
     requires:
       - name: riskdemo-db
-
+      - name: riskdemo-auth
+      - name: riskdemo-destination-service
   - name: riskdemo-db-deployer
     type: hdb
     path: gen/db
@@ -31,10 +32,59 @@ modules:
       buildpack: nodejs_buildpack
     requires:
       - name: riskdemo-db
-
+      - name: riskdemo-auth
+  - name: riskdemo-approuter
+    type: nodejs
+    path: approuter
+    requires:
+      - name: riskdemo-auth
+      - name: srv-api
+        group: destinations
+        properties:
+          forwardAuthToken: true
+          strictSSL: true
+          name: srv-binding
+          url: '~{srv-url}'
+      - name: riskdemo-db
+    build-parameters:
+      requires:
+        - name: riskdemo-app
+          artifacts:
+            - ./*
+          target-path: resources
+  - name: riskdemo-app
+    type: html5
+    path: app
+    build-parameters:
+      supported-platforms: []
 resources:
   - name: riskdemo-db
     type: com.sap.xs.hdi-container
     parameters:
       service: hana
       service-plan: hdi-shared
+  - name: riskdemo-auth
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: xsuaa
+      service-plan: application
+      path: ./xs-security.json
+      config:
+        xsappname: 'riskdemo-${space}'
+        role-collections:
+          - name: 'RiskManager-${space}'
+            description: Manage Risks
+            role-template-references:
+              - $XSAPPNAME.RiskManager
+          - name: 'RiskViewer-${space}'
+            description: View Risks
+            role-template-references:
+              - $XSAPPNAME.RiskViewer
+        oauth2-configuration:
+          redirect-uris:
+            - https://7a56508btrial-dev-riskdemo-approuter.cfapps.us10-001.hana.ondemand.com/login/callback
+  - name: riskdemo-destination-service
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: destination
+      service-plan: lite
