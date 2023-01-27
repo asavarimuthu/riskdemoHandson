@@ -1,3 +1,4 @@
+//comment added as part of CICD
 using { riskmanagement as rm } from '../db/schema';
  
  @(path: 'service/risk')
