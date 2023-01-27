@@ -16,7 +16,10 @@
   },
   "scripts": {
     "start": "cds run",
-    "watch-riskdemo": "cds watch --open riskdemo/webapp/index.html?sap-ui-xx-viewCache=false"
+    "watch-riskdemo": "cds watch --open riskdemo/webapp/index.html?sap-ui-xx-viewCache=false",
+    "undeploy": "cf undeploy riskdemo --delete-services --delete-service-keys --delete-service-brokers",
+    "build": "rimraf resources mta_archives && mbt build --mtar archive",
+    "deploy": "cf deploy mta_archives/archive.mtar --retries 1"
   },
   "engines": {
     "node": "^16.15"
@@ -48,7 +51,9 @@
   },
   "cds": {
     "requires": {
-      
+      "db": {
+        "kind": "hana-cloud"
+      }
     }
   },
   "sapux": [
